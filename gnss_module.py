@@ -16,20 +16,39 @@ def fit_timeseries(tlist, ylist):
     return velocity, uncertainty
 
 def fit_velocities(filename):
-    # Load data from file
-    data = np.loadtxt(filename, skiprows=1, delimiter=" ")
-    t = data[:, 0]
-    e, n, u = data[:, 1], data[:, 2], data[:, 3]
+    # Column names based on the provided sample format
+    columns = ['site', 'YYMMMDD', 'yyyy.yyyy', '__MJD', 'week', 'd', 'reflon', '_e0(m)', '__east(m)', 
+               '____n0(m)', '_north(m)', 'u0(m)', '____up(m)', '_ant(m)', 'sig_e(m)', 'sig_n(m)', 
+               'sig_u(m)', '__corr_en', '__corr_eu', '__corr_nu', '_latitude(deg)', '_longitude(deg)', '__height(m)']
     
+    # Load data using specified column names
+    data = pd.read_csv(filename, sep="\s+", names=columns, skiprows=1)
+    
+    # Extract necessary columns for further calculations
+    t = data['__MJD'].values
+    e = data['__east(m)'].values
+    n = data['_north(m)'].values
+    u = data['____up(m)'].values
+    
+    # Calculate velocities and uncertainties using fit_timeseries function
     e_vel, e_unc = fit_timeseries(t, e)
     n_vel, n_unc = fit_timeseries(t, n)
     u_vel, u_unc = fit_timeseries(t, u)
     
     return (e_vel, e_unc), (n_vel, n_unc), (u_vel, u_unc)
-
+    
 def get_coordinates(filename):
-    data = np.loadtxt(filename)
-    lat, lon, elev = data[:, 4], data[:, 5], data[:, 6]
+    # Column names based on the provided sample format
+    columns = ['site', 'YYMMMDD', 'yyyy.yyyy', '__MJD', 'week', 'd', 'reflon', '_e0(m)', '__east(m)', 
+               '____n0(m)', '_north(m)', 'u0(m)', '____up(m)', '_ant(m)', 'sig_e(m)', 'sig_n(m)', 
+               'sig_u(m)', '__corr_en', '__corr_eu', '__corr_nu', '_latitude(deg)', '_longitude(deg)', '__height(m)']
+    
+    # Load data using specified column names
+    data = pd.read_csv(filename, sep="\s+", names=columns, skiprows=1)
+    
+    lat = data['_latitude(deg)'].values
+    lon = data['_longitude(deg)'].values
+    elev = data['__height(m)'].values
     
     return np.mean(lat), np.mean(lon), np.mean(elev)
 
