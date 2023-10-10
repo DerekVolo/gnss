@@ -15,60 +15,37 @@ def fit_timeseries(tlist, ylist):
     uncertainty = np.sqrt(mcov[1][1])
     return velocity, uncertainty
 
-def fit_velocities(filename):
-    # Column names based on the provided sample format
-    columns = ['site', 'YYMMMDD', 'yyyy.yyyy', '__MJD', 'week', 'd', 'reflon', '_e0(m)', '__east(m)', 
-               '____n0(m)', '_north(m)', 'u0(m)', '____up(m)', '_ant(m)', 'sig_e(m)', 'sig_n(m)', 
-               'sig_u(m)', '__corr_en', '__corr_eu', '__corr_nu', '_latitude(deg)', '_longitude(deg)', '__height(m)']
+def fit_tide_gauge(filename):
+    # Load data with semicolons as a delimiter and without headers
+    data = pd.read_csv(filename, sep=";", header=None, skiprows=1)
     
-    # Load data using specified column names
-    data = pd.read_csv(filename, sep="\s+", names=columns, skiprows=1)
+    # Assuming the first column is time and the second column is sea level
+    t = data[0].values
+    sea_level = data[1].values
     
-    # Extract necessary columns for further calculations
-    t = data['__MJD'].values
-    e = data['__east(m)'].values
-    n = data['_north(m)'].values
-    u = data['____up(m)'].values
+    return fit_timeseries(t, sea_level)
     
-    # Calculate velocities and uncertainties using fit_timeseries function
-    e_vel, e_unc = fit_timeseries(t, e)
-    n_vel, n_unc = fit_timeseries(t, n)
-    u_vel, u_unc = fit_timeseries(t, u)
-    
-    return (e_vel, e_unc), (n_vel, n_unc), (u_vel, u_unc)
-    
-def get_coordinates(filename):
-    # Column names based on the provided sample format
-    columns = ['site', 'YYMMMDD', 'yyyy.yyyy', '__MJD', 'week', 'd', 'reflon', '_e0(m)', '__east(m)', 
-               '____n0(m)', '_north(m)', 'u0(m)', '____up(m)', '_ant(m)', 'sig_e(m)', 'sig_n(m)', 
-               'sig_u(m)', '__corr_en', '__corr_eu', '__corr_nu', '_latitude(deg)', '_longitude(deg)', '__height(m)']
-    
-    # Load data using specified column names
-    data = pd.read_csv(filename, sep="\s+", names=columns, skiprows=1)
-    
-    lat = data['_latitude(deg)'].values
-    lon = data['_longitude(deg)'].values
-    elev = data['__height(m)'].values
-    
-    return np.mean(lat), np.mean(lon), np.mean(elev)
-
-def fit_all_velocities(folder, pattern):
+def fit_all_velocities(folder, pattern, dtype="GNSS"):
     files = glob.glob(folder + pattern)
     results = []
 
     for file in files:
-        site_name = file.split('/')[-1].split('.')[0]
-        coords = get_coordinates(file)
-        e, n, u = fit_velocities(file)
-        
-        results.append({
-            'site_name': site_name,
-            'latitude': coords[0],
-            'longitude': coords[1],
-            'elevation': coords[2],
-            'e_velocity': e[0], 'e_uncertainty': e[1],
-            'n_velocity': n[0], 'n_uncertainty': n[1],
-            'u_velocity': u[0], 'u_uncertainty': u[1]
-        })
+        if dtype == "GNSS":
+            site_name = file.split('/')[-1].split('.')[0]
+            e, n, u = fit_velocities(file)
+            results.append({
+                'site_name': site_name,
+                'e_velocity': e[0], 'e_uncertainty': e[1],
+                'n_velocity': n[0], 'n_uncertainty': n[1],
+                'u_velocity': u[0], 'u_uncertainty': u[1]
+            })
+        elif dtype == "tide":
+            site_name = file.split('/')[-1].split('.')[0]
+            sea_level_rate, uncertainty = fit_tide_gauge(file)
+            results.append({
+                'site_name': site_name,
+                'sea_level_rate': sea_level_rate,
+                'uncertainty': uncertainty
+            })
 
     return pd.DataFrame(results)
