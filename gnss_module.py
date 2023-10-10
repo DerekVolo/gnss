@@ -17,7 +17,7 @@ def fit_timeseries(tlist, ylist):
 
 def fit_velocities(filename):
     # Load data from file
-    data = np.loadtxt(filename)
+    data = np.loadtxt(filename, skiprows=1)
     t = data[:, 0]
     e, n, u = data[:, 1], data[:, 2], data[:, 3]
     
